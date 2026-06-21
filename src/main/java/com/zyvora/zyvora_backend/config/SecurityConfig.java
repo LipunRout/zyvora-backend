@@ -1,8 +1,8 @@
-package com.zyvora.config;
+package com.zyvora.zyvora_backend.config;
 
-import com.zyvora.security.jwt.JwtAuthenticationFilter;
-import com.zyvora.security.oauth2.CustomOAuth2UserService;
-import com.zyvora.security.oauth2.OAuth2AuthenticationSuccessHandler;
+import com.zyvora.zyvora_backend.security.jwt.JwtAuthenticationFilter;
+import com.zyvora.zyvora_backend.security.oauth2.CustomOAuth2UserService;
+import com.zyvora.zyvora_backend.security.oauth2.OAuth2AuthenticationSuccessHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

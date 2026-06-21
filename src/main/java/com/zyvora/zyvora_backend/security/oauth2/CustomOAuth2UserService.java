@@ -1,7 +1,7 @@
-package com.zyvora.security.oauth2;
+package com.zyvora.zyvora_backend.security.oauth2;
 
-import com.zyvora.entity.User;
-import com.zyvora.repository.UserRepository;
+import com.zyvora.zyvora_backend.entity.User;
+import com.zyvora.zyvora_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;

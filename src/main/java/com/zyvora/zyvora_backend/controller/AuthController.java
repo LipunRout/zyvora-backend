@@ -1,6 +1,11 @@
-package com.zyvora.controller;
+package com.zyvora.zyvora_backend.controller;
 
-import com.zyvora.entity.User;
+import com.zyvora.zyvora_backend.dto.request.SendOtpRequest;
+import com.zyvora.zyvora_backend.dto.request.VerifyOtpRequest;
+import com.zyvora.zyvora_backend.dto.response.AuthResponse;
+import com.zyvora.zyvora_backend.entity.User;
+import com.zyvora.zyvora_backend.service.OtpService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -13,6 +18,8 @@ import java.util.Map;
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class AuthController {
+
+    private final OtpService otpService;
 
     // Quick health check - hit this to confirm the backend is alive
     @GetMapping("/test")
@@ -44,5 +51,17 @@ public class AuthController {
         // Stateless JWT - logout is handled client-side by deleting the token.
         // This endpoint exists for the frontend to call for consistency / future blacklist logic.
         return ResponseEntity.ok(Map.of("message", "Logged out"));
+    }
+
+    @PostMapping("/otp/send")
+    public ResponseEntity<?> sendOtp(@Valid @RequestBody SendOtpRequest request) {
+        otpService.sendOtp(request.getEmail());
+        return ResponseEntity.ok(Map.of("message", "OTP sent to " + request.getEmail()));
+    }
+
+    @PostMapping("/otp/verify")
+    public ResponseEntity<?> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
+        AuthResponse response = otpService.verifyOtp(request.getEmail(), request.getCode());
+        return ResponseEntity.ok(response);
     }
 }

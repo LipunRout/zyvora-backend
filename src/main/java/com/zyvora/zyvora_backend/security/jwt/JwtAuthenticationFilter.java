@@ -1,7 +1,7 @@
-package com.zyvora.security.jwt;
+package com.zyvora.zyvora_backend.security.jwt;
 
-import com.zyvora.entity.User;
-import com.zyvora.repository.UserRepository;
+import com.zyvora.zyvora_backend.entity.User;
+import com.zyvora.zyvora_backend.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

@@ -1,6 +1,6 @@
-package com.zyvora.security.oauth2;
+package com.zyvora.zyvora_backend.security.oauth2;
 
-import com.zyvora.security.jwt.JwtTokenProvider;
+import com.zyvora.zyvora_backend.security.jwt.JwtTokenProvider;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

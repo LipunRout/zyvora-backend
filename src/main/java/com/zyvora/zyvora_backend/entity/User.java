@@ -1,4 +1,4 @@
-package com.zyvora.entity;
+package com.zyvora.zyvora_backend.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

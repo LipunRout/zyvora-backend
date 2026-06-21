@@ -1,6 +1,6 @@
-package com.zyvora.repository;
+package com.zyvora.zyvora_backend.repository;
 
-import com.zyvora.entity.User;
+import com.zyvora.zyvora_backend.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

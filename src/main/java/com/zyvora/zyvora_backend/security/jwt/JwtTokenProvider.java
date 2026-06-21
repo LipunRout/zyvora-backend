@@ -1,4 +1,4 @@
-package com.zyvora.security.jwt;
+package com.zyvora.zyvora_backend.security.jwt;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
