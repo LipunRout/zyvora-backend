@@ -1,39 +1,62 @@
 package com.zyvora.zyvora_backend.service.impl;
 
 import com.zyvora.zyvora_backend.service.EmailService;
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
-import lombok.RequiredArgsConstructor;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.List;
+import java.util.Map;
 
 @Service
-@RequiredArgsConstructor
+@Slf4j
 public class EmailServiceImpl implements EmailService {
 
-    private final JavaMailSender mailSender;
+    private final RestTemplate restTemplate = new RestTemplate();
+
+    @Value("${resend.api.key}")
+    private String resendApiKey;
+
+    @Value("${resend.from.email}")
+    private String fromEmail;
+
+    private static final String RESEND_API_URL = "https://api.resend.com/emails";
 
     @Override
     public void sendOtpEmail(String to, String code, long expirationMinutes) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(resendApiKey);
+
+        Map<String, Object> body = Map.of(
+                "from", fromEmail,
+                "to", List.of(to),
+                "subject", "Your Zyvora code: " + code,
+                "html", buildHtml(code, expirationMinutes)
+        );
+
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+
         try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true);
+            ResponseEntity<String> response = restTemplate.postForEntity(RESEND_API_URL, request, String.class);
 
-            helper.setTo(to);
-            helper.setSubject("Your Zyvora code: " + code);
-            helper.setText(buildHtml(code, expirationMinutes), true);
-
-            mailSender.send(message);
-        } catch (MessagingException e) {
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                log.error("Resend API returned non-2xx status: {} - {}", response.getStatusCode(), response.getBody());
+                throw new RuntimeException("Failed to send OTP email: " + response.getStatusCode());
+            }
+        } catch (Exception e) {
+            log.error("Failed to send OTP email via Resend", e);
             throw new RuntimeException("Failed to send OTP email", e);
         }
     }
 
     private String buildHtml(String code, long expirationMinutes) {
-        // Email-safe: table layout, inline styles only, web-safe fonts, no external CSS.
-        // Brand: near-black bg, terracotta accent (#e84118), warm off-white text (#f5f0e8) —
-        // matches the Zyvora login screen.
         String spacedCode = String.join(" ", code.split(""));
 
         return """
@@ -51,7 +74,6 @@ public class EmailServiceImpl implements EmailService {
 
                         <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px; width:100%%;">
 
-                          <!-- Logo -->
                           <tr>
                             <td align="center" style="padding-bottom: 32px;">
                               <table role="presentation" cellpadding="0" cellspacing="0">
@@ -67,7 +89,6 @@ public class EmailServiceImpl implements EmailService {
                             </td>
                           </tr>
 
-                          <!-- Card -->
                           <tr>
                             <td style="background-color:#141414; border:1px solid rgba(255,255,255,0.07); border-radius:14px; padding: 40px 36px;">
 
@@ -79,7 +100,6 @@ public class EmailServiceImpl implements EmailService {
                                 Here's your code to continue
                               </h1>
 
-                              <!-- Code block -->
                               <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
                                 <tr>
                                   <td align="center" style="background-color:#0d0d0d; border:1px solid rgba(232,65,24,0.3); border-radius:10px; padding:22px 16px;">
@@ -105,7 +125,6 @@ public class EmailServiceImpl implements EmailService {
                             </td>
                           </tr>
 
-                          <!-- Footer -->
                           <tr>
                             <td align="center" style="padding-top: 28px;">
                               <p style="margin:0; font-family: Helvetica, Arial, sans-serif; font-size:11px; color:rgba(245,240,232,0.25); letter-spacing:0.3px;">
