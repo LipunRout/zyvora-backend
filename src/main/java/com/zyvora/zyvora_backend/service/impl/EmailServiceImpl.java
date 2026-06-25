@@ -3,55 +3,45 @@ package com.zyvora.zyvora_backend.service.impl;
 import com.zyvora.zyvora_backend.service.EmailService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
-import java.util.List;
-import java.util.Map;
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
 
 @Service
 @Slf4j
 public class EmailServiceImpl implements EmailService {
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final JavaMailSender mailSender;
 
-    @Value("${resend.api.key}")
-    private String resendApiKey;
-
-    @Value("${resend.from.email}")
+    @Value("${brevo.from.email:onboarding@zyvora.com}")
     private String fromEmail;
 
-    private static final String RESEND_API_URL = "https://api.resend.com/emails";
+    @Value("${brevo.from.name:Zyvora}")
+    private String fromName;
+
+    public EmailServiceImpl(JavaMailSender mailSender) {
+        this.mailSender = mailSender;
+    }
 
     @Override
     public void sendOtpEmail(String to, String code, long expirationMinutes) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(resendApiKey);
-
-        Map<String, Object> body = Map.of(
-                "from", fromEmail,
-                "to", List.of(to),
-                "subject", "Your Zyvora code: " + code,
-                "html", buildHtml(code, expirationMinutes)
-        );
-
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-
         try {
-            ResponseEntity<String> response = restTemplate.postForEntity(RESEND_API_URL, request, String.class);
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            if (!response.getStatusCode().is2xxSuccessful()) {
-                log.error("Resend API returned non-2xx status: {} - {}", response.getStatusCode(), response.getBody());
-                throw new RuntimeException("Failed to send OTP email: " + response.getStatusCode());
-            }
-        } catch (Exception e) {
-            log.error("Failed to send OTP email via Resend", e);
+            helper.setFrom(fromEmail, fromName);
+            helper.setTo(to);
+            helper.setSubject("Your Zyvora code: " + code);
+            helper.setText(buildHtml(code, expirationMinutes), true);
+
+            mailSender.send(message);
+            log.info("OTP email sent to {}", to);
+
+        } catch (MessagingException | java.io.UnsupportedEncodingException e) {
+            log.error("Failed to send OTP email to {}", to, e);
             throw new RuntimeException("Failed to send OTP email", e);
         }
     }
