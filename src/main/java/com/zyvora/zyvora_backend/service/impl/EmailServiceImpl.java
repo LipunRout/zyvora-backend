@@ -3,44 +3,53 @@ package com.zyvora.zyvora_backend.service.impl;
 import com.zyvora.zyvora_backend.service.EmailService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @Slf4j
 public class EmailServiceImpl implements EmailService {
 
-    private final JavaMailSender mailSender;
+    private final RestTemplate restTemplate = new RestTemplate();
 
-    @Value("${brevo.from.email:onboarding@zyvora.com}")
+    @Value("${brevo.api.key}")
+    private String brevoApiKey;
+
+    @Value("${brevo.from.email}")
     private String fromEmail;
 
     @Value("${brevo.from.name:Zyvora}")
     private String fromName;
 
-    public EmailServiceImpl(JavaMailSender mailSender) {
-        this.mailSender = mailSender;
-    }
+    private static final String BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
 
     @Override
     public void sendOtpEmail(String to, String code, long expirationMinutes) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("api-key", brevoApiKey);
+
+        Map<String, Object> body = Map.of(
+                "sender", Map.of("name", fromName, "email", fromEmail),
+                "to", List.of(Map.of("email", to)),
+                "subject", "Your Zyvora code: " + code,
+                "htmlContent", buildHtml(code, expirationMinutes)
+        );
+
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+
         try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-            helper.setFrom(fromEmail, fromName);
-            helper.setTo(to);
-            helper.setSubject("Your Zyvora code: " + code);
-            helper.setText(buildHtml(code, expirationMinutes), true);
-
-            mailSender.send(message);
+            ResponseEntity<String> response = restTemplate.postForEntity(BREVO_API_URL, request, String.class);
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                log.error("Brevo API error: {} - {}", response.getStatusCode(), response.getBody());
+                throw new RuntimeException("Failed to send OTP email: " + response.getStatusCode());
+            }
             log.info("OTP email sent to {}", to);
-
-        } catch (MessagingException | java.io.UnsupportedEncodingException e) {
+        } catch (Exception e) {
             log.error("Failed to send OTP email to {}", to, e);
             throw new RuntimeException("Failed to send OTP email", e);
         }
@@ -61,9 +70,7 @@ public class EmailServiceImpl implements EmailService {
                   <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background-color:#0a0a0a;">
                     <tr>
                       <td align="center" style="padding: 40px 16px;">
-
                         <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px; width:100%%;">
-
                           <tr>
                             <td align="center" style="padding-bottom: 32px;">
                               <table role="presentation" cellpadding="0" cellspacing="0">
@@ -78,18 +85,14 @@ public class EmailServiceImpl implements EmailService {
                               </table>
                             </td>
                           </tr>
-
                           <tr>
                             <td style="background-color:#141414; border:1px solid rgba(255,255,255,0.07); border-radius:14px; padding: 40px 36px;">
-
                               <p style="margin:0 0 6px 0; font-family: Helvetica, Arial, sans-serif; font-size:12px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:rgba(245,240,232,0.4);">
                                 Sign-in code
                               </p>
-
                               <h1 style="margin:0 0 24px 0; font-family: Helvetica, Arial, sans-serif; font-weight:700; font-size:24px; letter-spacing:-0.6px; color:#f5f0e8;">
                                 Here's your code to continue
                               </h1>
-
                               <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
                                 <tr>
                                   <td align="center" style="background-color:#0d0d0d; border:1px solid rgba(232,65,24,0.3); border-radius:10px; padding:22px 16px;">
@@ -97,11 +100,9 @@ public class EmailServiceImpl implements EmailService {
                                   </td>
                                 </tr>
                               </table>
-
                               <p style="margin:0 0 28px 0; font-family: Helvetica, Arial, sans-serif; font-size:14px; line-height:21px; font-weight:300; color:rgba(245,240,232,0.55);">
                                 This code expires in <strong style="color:#f5f0e8; font-weight:600;">%d minute(s)</strong>. Enter it on the Zyvora sign-in screen to continue building your team.
                               </p>
-
                               <table role="presentation" width="100%%" cellpadding="0" cellspacing="0">
                                 <tr>
                                   <td style="border-top:1px solid rgba(255,255,255,0.07); padding-top:20px;">
@@ -111,10 +112,8 @@ public class EmailServiceImpl implements EmailService {
                                   </td>
                                 </tr>
                               </table>
-
                             </td>
                           </tr>
-
                           <tr>
                             <td align="center" style="padding-top: 28px;">
                               <p style="margin:0; font-family: Helvetica, Arial, sans-serif; font-size:11px; color:rgba(245,240,232,0.25); letter-spacing:0.3px;">
@@ -122,9 +121,7 @@ public class EmailServiceImpl implements EmailService {
                               </p>
                             </td>
                           </tr>
-
                         </table>
-
                       </td>
                     </tr>
                   </table>
